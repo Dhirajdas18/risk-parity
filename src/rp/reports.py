@@ -351,10 +351,86 @@ def report_optimisers(out_dir: Path) -> dict:
     return res
 
 
+def report_assets(out_dir: Path) -> dict:
+    """Which assets: risk parity on five asset sets (walk-forward, 36-month window, monthly, 0.25%
+    per rupee traded, Jan 2007 - Dec 2025); gold measured as COMEX gold times the rupee against the
+    GOLDBEES ETF (monthly returns Feb 2009 - Dec 2025), the ETF's price relative to COMEX gold in
+    rupees around import-duty changes, and risk parity built with each gold series from 2012."""
+    import pandas as pd
+
+    from rp import assets, gold
+    from rp import backtest as B
+    from rp import weights as W
+
+    t = assets.table()
+    cash = t["cash"]
+    sets = {"stocks + 10-year gilt": ["equity", "gilt10"], "stocks + gold": ["equity", "gold"],
+            "stocks + 10-year gilt + gold": ["equity", "gilt10", "gold"],
+            "stocks + 5-year gilt + gold": ["equity", "gilt5", "gold"],
+            "all four": ["equity", "gilt10", "gilt5", "gold"]}
+    res, sh = {}, {}
+    for k, cols in sets.items():
+        o = B.run(t[cols], lambda p: W.erc(cov(p)), 36, cost=0.0025)
+        s = B.stats(o["net"], cash)
+        sh[k] = s
+        res[f"  {k}"] = fmt(s) + "; average weights " + ", ".join(
+            f"{NAMES[c]} {o[c].mean():.0%}" for c in cols)
+    res["walk-forward months"] = f"{len(o)}, {o.index[0]:%b %Y}-{o.index[-1]:%b %Y}"
+    g = gold.monthly().loc[:t.index[-1]].dropna()
+    r = g.pct_change().dropna()
+    yrs = len(r) / 12
+    res["gold, COMEX x rupee vs GOLDBEES"] = (
+        f"{len(r)} months {r.index[0]:%b %Y}-{r.index[-1]:%b %Y}: monthly correlation "
+        f"{r.corr().iloc[0, 1]:.2f}; compounded {(1 + r['gold_inr']).prod() ** (1 / yrs) - 1:.1%}"
+        f" vs {(1 + r['goldbees']).prod() ** (1 / yrs) - 1:.1%} a year")
+    rel = g["goldbees"] / g["gold_inr"]
+    rel = rel / rel.iloc[0]
+    for a, b in (("2011-12", "2013-12"), ("2024-06", "2024-07"), ("2009-01", "2025-12")):
+        res[f"  GOLDBEES relative to COMEX gold in rupees, {a} to {b}"] = (
+            f"{rel.loc[b].iloc[-1] / rel.loc[a].iloc[-1] - 1:+.1%}")
+    t2 = t.join(r["goldbees"]).dropna()
+    for gc in ("gold", "goldbees"):
+        o = B.run(t2[["equity", "gilt10", gc]], lambda p: W.erc(cov(p)), 36, cost=0.0025)
+        res[f"risk parity with {gc}, {o.index[0]:%b %Y}-{o.index[-1]:%b %Y}"] = fmt(
+            B.stats(o["net"], cash))
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1, 1.1]})
+    ax = axes[0]
+    keys = list(sets)
+    y = np.arange(len(keys))[::-1]
+    ax.barh(y, [sh[k]["sharpe"] for k in keys], color=plots.SERIES[0], height=0.6)
+    for yi, k in zip(y, keys, strict=True):
+        ax.text(sh[k]["sharpe"] + 0.01, yi, f"{sh[k]['sharpe']:.2f}, worst fall "
+                f"{sh[k]['dd']:.0%}".replace("-", "−"), va="center", fontsize=8.5,
+                color=plots.TEXT_2)
+    ax.set_yticks(y, keys, fontsize=9)
+    ax.set_xlim(0, 1.2)
+    ax.set_xlabel("Sharpe ratio above cash, 2007-2025, after costs")
+    ax.set_title("Risk parity on different asset sets", fontsize=10.5, loc="left")
+    ax = axes[1]
+    ax.plot(rel.index, rel, color=plots.SERIES[3], lw=1.5)
+    ax.axhline(1, color=plots.MUTED, lw=0.8)
+    ax.axvspan(pd.Timestamp("2012-01-01"), pd.Timestamp("2013-08-31"), color=plots.GRID, lw=0)
+    ax.axvline(pd.Timestamp("2024-07-24"), color=plots.TEXT_2, lw=0.8, ls="--")
+    ax.text(pd.Timestamp("2012-02-01"), 1.20, "duty raised\n2% to 10%", fontsize=8,
+            color=plots.TEXT_2, va="top")
+    ax.text(pd.Timestamp("2024-05-01"), 1.20, "duty cut\n15% to 6%", fontsize=8,
+            color=plots.TEXT_2, va="top", ha="right")
+    ax.set_ylabel("GOLDBEES ÷ COMEX gold in rupees (Jan 2009 = 1)")
+    ax.set_title("India's gold price vs the world price in rupees", fontsize=10.5, loc="left")
+    fig.suptitle("Without gold, risk parity's Sharpe ratio fell from 0.76 to 0.47; a 5-year gilt "
+                 "did as well as the 10-year", x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout()
+    plots.save(fig, out_dir, "assets")
+    plt.close(fig)
+    return res
+
+
 REPORTS: dict[str, Callable[[Path], dict]] = {
     "basics": report_basics,
     "leverage": report_leverage,
     "estimation": report_estimation,
     "crises": report_crises,
     "optimisers": report_optimisers,
+    "assets": report_assets,
 }

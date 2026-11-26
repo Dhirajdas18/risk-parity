@@ -19,7 +19,7 @@ share of risk and growth against 60/40 and equal weight, computed month by month
 - [x] Estimation window, EWMA and rebalancing frequency, after costs, out of sample
 - [x] Crises: 2008, the 2013 taper, 2020 and 2022
 - [x] Risk parity against minimum variance and maximum Sharpe, out of sample
-- [ ] Which assets: a short gilt, and how much gold's measurement matters
+- [x] Which assets: a short gilt, and how much gold's measurement matters
 - [ ] Verdict: a portfolio-construction rule for the reference model beyond stocks
 
 ## Findings
@@ -32,7 +32,7 @@ Monthly returns in rupees, January 2004 to December 2025 (264 months): stocks ar
 market including dividends; the 10-year gilt is a par bond bought at each month-end at RBI's yield
 and repriced a month later at the yield for its shorter life, plus a month's coupon; gold is COMEX
 gold futures times the rupee rate, which leaves out India's import duty (it tracked the GOLDBEES ETF
-with a monthly correlation of 0.87 and 11.9% against 11.7% a year from 2009); cash is IIMA's
+with a monthly correlation of 0.87 and 13.6% against 13.0% a year from 2009; see finding 6); cash is IIMA's
 risk-free rate. An asset's risk contribution is its weight times its covariance with the portfolio;
 equal risk contribution (ERC) weights make those contributions equal. Full-sample weights describe
 the period with hindsight; the walk-forward sets each month's weights from the previous 36 months
@@ -165,12 +165,46 @@ walk-forward from January 2009 (204 months), rebalanced monthly, paying 0.25% pe
   2004-2025 sample (27% stocks, 33% gilt, 40% gold), which no one could have known in 2009, gave a
   Sharpe ratio of 0.82 from 2009, close to risk parity's 0.79 without any return forecast.
 
+### 6. Without gold, risk parity's Sharpe ratio fell from 0.76 to 0.47; a 5-year gilt did as well as the 10-year
+
+<a href="docs/img/assets.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/assets.png"><img src="docs/img/assets.gif" alt="Sharpe ratio and worst fall of risk parity on five asset sets, and the GOLDBEES ETF's price relative to COMEX gold in rupees with India's import-duty changes marked, 2009-2025" width="720"></picture></a>
+
+Risk parity on five sets of assets, walk-forward from January 2007 (36-month window, monthly, 0.25%
+per rupee traded). The 5-year gilt is built the same way as the 10-year, from RBI's yields. Then
+how gold is measured: COMEX gold times the rupee leaves out India's import duty, which the GOLDBEES
+ETF's price carries (along with its fees). India cut the duty from 15% to 6% from 24 July 2024
+([World Gold Council](https://www.gold.org/goldhub/gold-focus/2024/07/indian-gold-import-duties-reduced-lowest-level-over-decade));
+the 2012-2013 rises took it from 2% to 10% in steps.
+
+| Asset set | Compounded a year | Volatility | Sharpe | Worst fall |
+|---|---|---|---|---|
+| Stocks + 10-year gilt | 9.8% | 7.2% | 0.47 | −10% |
+| Stocks + gold | 15.6% | 12.5% | 0.73 | −25% |
+| Stocks + 10-year gilt + gold | 11.5% | 6.4% | 0.76 | −8% |
+| Stocks + 5-year gilt + gold | 10.7% | 4.8% | **0.85** | −5% |
+| All four | 10.4% | 4.9% | 0.77 | −6% |
+
+- **Gold mattered most.** Leaving it out cut the Sharpe ratio from 0.76 to 0.47 and lowered growth
+  from 11.5% to 9.8% a year.
+- **Bonds mattered for the falls.** Without a gilt, stocks and gold grew 15.6% a year but fell as far
+  as −25%.
+- **The 5-year gilt matched the 10-year per unit of risk.** Its Sharpe ratio was 0.85 against 0.76,
+  a gap well within one standard error (about 0.23), with lower growth and lower volatility. Adding
+  both gilts gave 0.77.
+- **How gold is measured moved risk parity by about 0.4 points a year.** From February 2012, risk
+  parity with COMEX gold compounded 10.9% a year (Sharpe 0.83) and with GOLDBEES 10.5% (0.78).
+  Over February 2009 to December 2025, COMEX gold in rupees compounded 13.6% a year and GOLDBEES
+  13.0%, with a monthly correlation of 0.87.
+- **The duty shows in the ETF's price.** GOLDBEES fell 7.0% against COMEX gold in rupees over July
+  2024, close to the 7.8% that the cut from 15% to 6% implies (1.06 ÷ 1.15). From December 2011 to
+  December 2013 it gained 16.4%, more than the rise from 2% to 10% alone implies (about 8%).
+
 ## Quick start
 
 ```bash
 uv sync
 uv run python scripts/fetch_data.py   # IIMA, RBI yields and Yahoo gold -> data/
-uv run rp report basics               # topics: basics, leverage, estimation, crises, optimisers
+uv run rp report basics               # topics: basics, leverage, estimation, crises, optimisers, assets
 uv run python scripts/build_site.py   # risk parity lab -> site/index.html
 uv run pytest
 ```
