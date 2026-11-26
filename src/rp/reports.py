@@ -221,8 +221,73 @@ def report_estimation(out_dir: Path) -> dict:
     return res
 
 
+CRISES = {"2008 crash": ("2008-01", "2009-02"), "2013 taper": ("2013-06", "2013-08"),
+          "2020 Covid": ("2020-02", "2020-03"), "2022 rate rises": ("2022-01", "2022-06")}
+
+
+def report_crises(out_dir: Path) -> dict:
+    """Crises: each portfolio's return over four named stress windows (walk-forward, 36-month
+    window, monthly, 0.25% per rupee traded), with each asset's return and gold split into its
+    dollar price and the rupee; and average returns over every month stocks fell more than 5%,
+    every month the 10-year gilt fell more than 2%, and every month both fell."""
+    import pandas as pd
+
+    from rp import assets, gold
+    from rp import backtest as B
+
+    t = assets.table()
+    R, cash = t[RISKY], t["cash"]
+    ru = rules()
+    runs = {k: B.run(R, f, 36, cost=0.0025) for k, f in ru.items()}
+    L = (B.exante_vol(R, runs["60/40"]) / B.exante_vol(R, runs["risk parity (ERC)"])).clip(upper=4)
+    P = pd.DataFrame({k: o["net"] for k, o in runs.items()})
+    P["risk parity 2x, borrow at cash + 3%"] = B.lever(P["risk parity (ERC)"], L, cash + 0.03 / 12)
+    P = P.join(R)
+    g = pd.read_parquet(gold.yahoo_dir() / "gold.parquet").resample("ME").last()
+    res, tab = {}, {}
+    for k, (a, b) in CRISES.items():
+        x = (1 + P.loc[a:b]).prod() - 1
+        tab[k] = x
+        prev = g.index[g.index.get_indexer([pd.Timestamp(a)], method="bfill")[0] - 1]
+        gd = g.loc[prev:b]
+        usd, inr = (gd.iloc[-1] / gd.iloc[0] - 1)[["GC=F", "USDINR=X"]]
+        res[f"{k} ({a} to {b})"] = "; ".join(f"{NAMES.get(c, c)} {v:+.1%}" for c, v in x.items())
+        res[f"  {k}, gold"] = f"dollar price {usd:+.1%}, dollar in rupees {inr:+.1%}"
+    for lab, m in (("stocks fell more than 5%", P["equity"] < -0.05),
+                   ("10-year gilt fell more than 2%", P["gilt10"] < -0.02),
+                   ("stocks and gilt both fell", (P["equity"] < 0) & (P["gilt10"] < 0))):
+        res[f"months {lab}"] = f"{m.sum()} of {len(P)}: " + "; ".join(
+            f"{NAMES.get(c, c)} {v:+.2%}" for c, v in P[m].mean().items())
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.25, 1]})
+    for ax, cols, cl, title in (
+            (axes[0], ["60/40", "equal weight", "risk parity (ERC)",
+                       "risk parity 2x, borrow at cash + 3%"],
+             [plots.TEXT, plots.MUTED, plots.SERIES[0], plots.SERIES[1]], "Portfolios"),
+            (axes[1], RISKY, [COL[c] for c in RISKY], "Assets (gold in rupees)")):
+        x = np.arange(len(CRISES))
+        wd = 0.8 / len(cols)
+        for j, (c, col) in enumerate(zip(cols, cl, strict=True)):
+            ax.bar(x + (j - (len(cols) - 1) / 2) * wd, [tab[k][c] * 100 for k in CRISES],
+                   width=wd * 0.92, color=col, label=NAMES.get(c, c))
+        ax.axhline(0, color=plots.TEXT_2, lw=0.8)
+        ax.set_xticks(x, list(CRISES), fontsize=9)
+        ax.yaxis.set_major_formatter(
+            lambda v, _: "0%" if round(v) == 0 else f"{v:+.0f}%".replace("-", "−"))
+        ax.legend(frameon=False, fontsize=8, loc="lower right")
+        ax.set_title(title, fontsize=10.5, loc="left")
+    axes[0].set_ylabel("return over the window")
+    fig.suptitle("Risk parity rose 11% through the 2008 crash while 60/40 lost 36%; gilts and "
+                 "gold both rose", x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout()
+    plots.save(fig, out_dir, "crises")
+    plt.close(fig)
+    return res
+
+
 REPORTS: dict[str, Callable[[Path], dict]] = {
     "basics": report_basics,
     "leverage": report_leverage,
     "estimation": report_estimation,
+    "crises": report_crises,
 }

@@ -17,7 +17,7 @@ share of risk and growth against 60/40 and equal weight, computed month by month
 - [x] What risk parity does: equal risk contribution against 60/40, equal weight and inverse volatility
 - [x] Leverage: unlevered risk parity, borrowing at Indian rates, and a volatility target
 - [x] Estimation window, EWMA and rebalancing frequency, after costs, out of sample
-- [ ] Crises: 2008, the 2013 taper, 2020 and 2022
+- [x] Crises: 2008, the 2013 taper, 2020 and 2022
 - [ ] Risk parity against minimum variance and maximum Sharpe, out of sample
 - [ ] Which assets: a short gilt, and how much gold's measurement matters
 - [ ] Verdict: a portfolio-construction rule for the reference model beyond stocks
@@ -107,12 +107,42 @@ rebalancing gains are not included.
   11.2% volatility (Sharpe 0.59, worst fall −14%), more growth than risk parity but less per unit of
   risk.
 
+### 4. Risk parity rose 11% through the 2008 crash while 60/40 lost 36%; gilts and gold both rose
+
+<a href="docs/img/crises.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/crises.png"><img src="docs/img/crises.gif" alt="Returns of 60/40, equal weight, risk parity and levered risk parity, and of stocks, the 10-year gilt and gold, over the 2008 crash, the 2013 taper, the 2020 Covid fall and the 2022 rate rises" width="720"></picture></a>
+
+Four stress windows, by month: the 2008 crash (January 2008 to February 2009), the 2013 taper scare
+(June to August 2013), the Covid fall (February to March 2020) and the 2022 rate rises (January to
+June 2022). Portfolios are walk-forward as in finding 1 (36-month window, monthly) and pay 0.25% per
+rupee traded; the levered version is finding 2's, borrowing at cash + 3%. An asset's contribution is
+its weight times its return, summed over the window's months.
+
+| Window | 60/40 | Equal weight | Risk parity | Risk parity 2x | Stocks | 10-year gilt | Gold (₹) |
+|---|---|---|---|---|---|---|---|
+| 2008 crash | −36.4% | −8.0% | **+11.2%** | +8.8% | −60.7% | +18.1% | +45.5% |
+| 2013 taper | −5.9% | +2.4% | −1.9% | −6.9% | −5.2% | −7.0% | +19.8% |
+| 2020 Covid | −13.3% | −5.4% | −3.3% | −7.1% | −23.2% | +2.6% | +5.3% |
+| 2022 rate rises | −6.5% | −2.4% | −2.2% | −7.2% | −9.4% | −2.4% | +4.8% |
+
+- **In 2008, gilts did more of the work than gold.** Of risk parity's +11.2%, the gilt contributed
+  about +12.8 points, gold +9.3 and stocks −10.3.
+- **In 2013, stocks and gilts fell together and only gold rose.** Gold's +19.8% in rupees was all the
+  rupee: dollar gold rose 0.3% while the dollar rose 19.5% against the rupee. In 2008 the split
+  was 12.8% from gold's dollar price and 29.1% from the rupee.
+- **Across all 28 months when stocks fell more than 5%,** risk parity averaged −0.19% a month
+  against 60/40's −5.03%. In the 32 months when stocks and the gilt both fell, risk parity averaged
+  −0.93% against −2.58%, and gold averaged +2.38%.
+- **Its weak spot was bond sell-offs.** In the 14 months the 10-year gilt fell more than 2%, risk
+  parity averaged −0.40% while 60/40 gained 0.55%, because stocks rose 3.10% in those months.
+- **Levered at cash + 3%, risk parity lost 6.9% to 7.2% in each window after 2008:** more than
+  60/40 in 2013 and 2022, about half of 60/40's loss in 2020.
+
 ## Quick start
 
 ```bash
 uv sync
 uv run python scripts/fetch_data.py   # IIMA, RBI yields and Yahoo gold -> data/
-uv run rp report basics               # topics: basics, leverage, estimation
+uv run rp report basics               # topics: basics, leverage, estimation, crises
 uv run python scripts/build_site.py   # risk parity lab -> site/index.html
 uv run pytest
 ```
