@@ -10,7 +10,7 @@ from rp import plots
 
 RISKY = ["equity", "gilt10", "gold"]
 NAMES = {"equity": "stocks", "gilt10": "10-year gilt", "gilt5": "5-year gilt", "gold": "gold",
-         "cash": "cash"}
+         "goldbees": "GOLDBEES", "cash": "cash"}
 COL = {"equity": plots.SERIES[0], "gilt10": plots.SERIES[2], "gilt5": plots.SERIES[4],
        "gold": plots.SERIES[3], "cash": plots.MUTED}
 
@@ -133,6 +133,11 @@ def report_leverage(out_dir: Path) -> dict:
         c = B.stats(B.lever(erc["net"], L, cash + m / 12), cash)["cagr"]
         lo, hi = (m, hi) if c > target else (lo, m)
     res["break-even spread over cash (levered risk parity grows like 60/40)"] = f"{m:.1%} a year"
+    res["  at the break-even spread"] = fmt(B.stats(B.lever(erc["net"], L, cash + m / 12), cash))
+    res["  most leverage"] = f"{L.max():.2f}x in {L.idxmax():%b %Y}"
+    c25 = (1 + cash.loc["2025"]).prod() - 1
+    res["cash in 2025 (compounded)"] = (f"{c25:.1%}; margin loans at 9.65% and 15% are "
+                                        f"{0.0965 - c25:.1%} and {0.15 - c25:.1%} over it")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.4, 1]})
     ax = axes[0]
@@ -178,7 +183,7 @@ def report_estimation(out_dir: Path) -> dict:
     t = assets.table()
     R, cash = t[RISKY], t["cash"]
     est = {"plain": lambda p: W.erc(cov(p)), "fading": lambda p: W.erc(W.ewma_cov(p, 12))}
-    res, grid = {}, {}
+    res, grid, nets = {}, {}, {}
     for win in (12, 36, 60):
         for e, f in est.items():
             for ev in (1, 3, 12):
@@ -187,6 +192,7 @@ def report_estimation(out_dir: Path) -> dict:
                 s = B.stats(o["net"], cash)
                 g = B.stats(o["gross"], cash)["cagr"]
                 grid[win, e, ev] = (s["cagr"], o["cost"].sum() / yrs)
+                nets[win, e, ev] = o["net"]
                 res[f"  {win} months, {e}, every {ev}"] = (
                     fmt(s) + f"; before costs {g:+.1%}; turnover {o['turnover'].sum() / yrs:.0%}"
                     f" a year, cost {o['cost'].sum() / yrs:.2%} a year")
@@ -195,6 +201,11 @@ def report_estimation(out_dir: Path) -> dict:
     res["months"] = f"{len(o)}, {o.index[0]:%b %Y}-{o.index[-1]:%b %Y}"
     c = [v[0] for v in grid.values()]
     res["range of net growth"] = f"{min(c):.1%} to {max(c):.1%}"
+    hi, lo = max(grid, key=lambda k: grid[k][0]), min(grid, key=lambda k: grid[k][0])
+    d, se = B.mean_diff(nets[hi], nets[lo])
+    res["best minus worst version, paired"] = (
+        f"{hi} vs {lo}: average return {d:+.2%} a year, standard error {se:.2%} "
+        f"(one strategy alone: {nets[hi].std() * np.sqrt(12) / np.sqrt(len(nets[hi]) / 12):.2%})")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.4))
     groups = [(w, e) for w in (12, 36, 60) for e in est]
@@ -213,8 +224,8 @@ def report_estimation(out_dir: Path) -> dict:
     axes[1].set_yticks([0, 0.0005, 0.001, 0.0015, 0.002, 0.0025])
     axes[0].legend(frameon=False, fontsize=8.5, title="rebalanced", title_fontsize=8.5,
                    loc="lower right")
-    fig.suptitle("How risk parity was estimated barely mattered: 10.8% to 11.5% a year after "
-                 "costs, 2009-2025", x=0.01, ha="left", fontweight="bold")
+    fig.suptitle("Estimation choices moved risk parity by at most 0.7 points a year after costs, "
+                 "2009-2025", x=0.01, ha="left", fontweight="bold")
     fig.tight_layout()
     plots.save(fig, out_dir, "estimation")
     plt.close(fig)
@@ -241,7 +252,8 @@ def report_crises(out_dir: Path) -> dict:
     runs = {k: B.run(R, f, 36, cost=0.0025) for k, f in ru.items()}
     L = (B.exante_vol(R, runs["60/40"]) / B.exante_vol(R, runs["risk parity (ERC)"])).clip(upper=4)
     P = pd.DataFrame({k: o["net"] for k, o in runs.items()})
-    P["risk parity 2x, borrow at cash + 3%"] = B.lever(P["risk parity (ERC)"], L, cash + 0.03 / 12)
+    P["risk parity levered, borrow at cash + 3%"] = B.lever(P["risk parity (ERC)"], L,
+                                                           cash + 0.03 / 12, cost=0.0025)
     P = P.join(R)
     g = pd.read_parquet(gold.yahoo_dir() / "gold.parquet").resample("ME").last()
     res, tab = {}, {}
@@ -253,6 +265,10 @@ def report_crises(out_dir: Path) -> dict:
         usd, inr = (gd.iloc[-1] / gd.iloc[0] - 1)[["GC=F", "USDINR=X"]]
         res[f"{k} ({a} to {b})"] = "; ".join(f"{NAMES.get(c, c)} {v:+.1%}" for c, v in x.items())
         res[f"  {k}, gold"] = f"dollar price {usd:+.1%}, dollar in rupees {inr:+.1%}"
+        o = runs["risk parity (ERC)"].loc[a:b]
+        res[f"  {k}, contributions to risk parity"] = ", ".join(
+            f"{NAMES[c]} {(o[c] * R.loc[o.index, c]).sum():+.1%}" for c in RISKY)
+        res[f"  {k}, leverage"] = f"{L.loc[a:b].min():.2f}x to {L.loc[a:b].max():.2f}x"
     for lab, m in (("stocks fell more than 5%", P["equity"] < -0.05),
                    ("10-year gilt fell more than 2%", P["gilt10"] < -0.02),
                    ("stocks and gilt both fell", (P["equity"] < 0) & (P["gilt10"] < 0))):
@@ -262,7 +278,7 @@ def report_crises(out_dir: Path) -> dict:
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.25, 1]})
     for ax, cols, cl, title in (
             (axes[0], ["60/40", "equal weight", "risk parity (ERC)",
-                       "risk parity 2x, borrow at cash + 3%"],
+                       "risk parity levered, borrow at cash + 3%"],
              [plots.TEXT, plots.MUTED, plots.SERIES[0], plots.SERIES[1]], "Portfolios"),
             (axes[1], RISKY, [COL[c] for c in RISKY], "Assets (gold in rupees)")):
         x = np.arange(len(CRISES))
@@ -314,6 +330,17 @@ def report_optimisers(out_dir: Path) -> dict:
                 fmt(B.stats(o["net"], cash)) + f"; turnover {o['turnover'].sum() / yrs:.0%} a year"
                 + "; weights average (sd) " + ", ".join(
                     f"{NAMES[c]} {o[c].mean():.0%} ({o[c].std():.0%})" for c in RISKY))
+    for win in (36, 60):
+        rp_ = runs[win, "risk parity (ERC)"]["net"]
+        for k in ("minimum variance", "maximum Sharpe", "60/40"):
+            d, se = B.sharpe_diff(rp_, runs[win, k]["net"], cash)
+            res[f"  {win} months, risk parity minus {k}, Sharpe"] = (
+                f"{d:+.2f}, paired standard error {se:.2f}, t {d / se:.1f}")
+    ms = runs[36, "maximum Sharpe"]
+    big = ms[RISKY].max(axis=1) > 0.9
+    res["maximum Sharpe over 90% in one asset (36 months)"] = f"{big.sum()} months: " + "; ".join(
+        f"{y} {NAMES[c]} {n}" for (y, c), n in
+        ms.loc[big, RISKY].idxmax(axis=1).groupby(lambda d: d.year).value_counts().items())
     X = Rc.to_numpy()
     wh = W.max_sharpe(cov(X[:, :3]), X[:, :3].mean(0) - X[:, 3].mean())
     o = B.run(Rc, lambda p: np.r_[wh, 0], 36, cost=0.0025, start="2009-01-31")
@@ -336,7 +363,6 @@ def report_optimisers(out_dir: Path) -> dict:
     ax.legend(frameon=False, fontsize=8.5, loc="upper left")
     ax.set_title("Walk-forward, 36-month window", fontsize=10.5, loc="left")
     ax = axes[1]
-    ms = runs[36, "maximum Sharpe"]
     ax.stackplot(ms.index, *[ms[c] * 100 for c in RISKY], colors=[COL[c] for c in RISKY],
                  labels=[NAMES[c] for c in RISKY], edgecolor=plots.SURFACE, linewidth=0.3)
     ax.set_ylim(0, 100)
@@ -368,16 +394,22 @@ def report_assets(out_dir: Path) -> dict:
             "stocks + 10-year gilt + gold": ["equity", "gilt10", "gold"],
             "stocks + 5-year gilt + gold": ["equity", "gilt5", "gold"],
             "all four": ["equity", "gilt10", "gilt5", "gold"]}
-    res, sh = {}, {}
+    res, sh, nets = {}, {}, {}
     for k, cols in sets.items():
         o = B.run(t[cols], lambda p: W.erc(cov(p)), 36, cost=0.0025)
         s = B.stats(o["net"], cash)
         sh[k] = s
+        nets[k] = o["net"]
         res[f"  {k}"] = fmt(s) + "; average weights " + ", ".join(
             f"{NAMES[c]} {o[c].mean():.0%}" for c in cols)
     res["walk-forward months"] = f"{len(o)}, {o.index[0]:%b %Y}-{o.index[-1]:%b %Y}"
+    base = nets["stocks + 10-year gilt + gold"]
+    for k in ("stocks + 10-year gilt", "stocks + 5-year gilt + gold", "all four"):
+        d, se = B.sharpe_diff(nets[k], base, cash)
+        res[f"  {k} minus stocks + 10-year gilt + gold, Sharpe"] = (
+            f"{d:+.2f}, paired standard error {se:.2f}, t {d / se:.1f}")
     g = gold.monthly().loc[:t.index[-1]].dropna()
-    r = g.pct_change().dropna()
+    r = g.pct_change(fill_method=None).dropna()
     yrs = len(r) / 12
     res["gold, COMEX x rupee vs GOLDBEES"] = (
         f"{len(r)} months {r.index[0]:%b %Y}-{r.index[-1]:%b %Y}: monthly correlation "
@@ -438,7 +470,7 @@ def report_verdict(out_dir: Path) -> dict:
 
     t = assets.table()
     cash = t["cash"]
-    g = gold.monthly()["goldbees"].pct_change().rename("goldbees")
+    g = gold.monthly()["goldbees"].pct_change(fill_method=None).rename("goldbees")
     X = t[["equity", "gilt10"]].join(g).dropna()
     rl = {"risk parity": lambda p: W.erc(cov(p)), "60/40": lambda p: np.array([0.6, 0.4, 0]),
           "equal weight": lambda p: np.full(3, 1 / 3)}
@@ -451,9 +483,14 @@ def report_verdict(out_dir: Path) -> dict:
         res[f"  {k}"] = fmt(B.stats(o["net"], cash)) + (
             f"; turnover {o['turnover'].sum() / yrs:.0%} a year, cost "
             f"{o['cost'].sum() / yrs:.2%} a year; average weights "
-            + ", ".join(f"{c} {o[c].mean():.0%}" for c in X))
+            + ", ".join(f"{NAMES[c]} {o[c].mean():.0%}" for c in X))
         for a, b in ((idx[0], idx[idx < half][-1]), (half, idx[-1])):
             res[f"    {k}, {a:%b %Y}-{b:%b %Y}"] = fmt(B.stats(o["net"].loc[a:b], cash))
+
+    for k in ("60/40", "equal weight"):
+        d, se = B.sharpe_diff(runs["risk parity"]["net"], runs[k]["net"], cash)
+        res[f"risk parity minus {k}, Sharpe"] = (
+            f"{d:+.2f}, paired standard error {se:.2f}, t {d / se:.1f}")
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.3, 1]})
     cl = {"risk parity": plots.SERIES[0], "60/40": plots.TEXT, "equal weight": plots.MUTED}

@@ -26,7 +26,8 @@ more money, so each carries the same risk.</p>
 <div id="rp-weights" class="sim-chart" role="img" aria-label="Stacked area chart of risk-parity weights over time"></div>
 <h3>Where the risk comes from, over the whole period</h3>
 <p class="note">How to read it: each asset’s share of the portfolio’s risk, using the whole
-period’s volatilities and correlations, for the average weights each portfolio held.</p>
+period’s realised volatilities and correlations (known only afterwards), for the average weights
+each portfolio held.</p>
 <div id="rp-risk" class="sim-chart short" role="img" aria-label="Bar chart of each asset's share of risk in each portfolio"></div>
 <script>
 $js
@@ -76,10 +77,11 @@ $js
     };
     if (A.length < 2) return clear("Pick at least two assets.");
     // rows: estimation window before the first chosen year, then the chosen years
-    const first = D.months.findIndex((m) => m.slice(0, 4) >= a);
+    let first = D.months.findIndex((m) => m.slice(0, 4) >= a), moved = "";
+    if (first < win) { first = win; moved = ` Starts later than picked: the first ${win} months of data are needed for the estimate.`; }
     const last = D.months.length - 1 - [...D.months].reverse().findIndex((m) => m.slice(0, 4) <= b);
     const start = first - win;
-    if (start < 0) return clear(`Data starts in ${D.months[0].slice(0, 7)}; with a ${win}-month window the first usable year is ${D.months[win].slice(0, 4)}.`);
+    if (last <= first) return clear("Pick a later end year.");
     const idx = Array.from({ length: last - start + 1 }, (_, k) => start + k);
     const X = idx.map((i) => A.map((c) => D[c][i]));
     const months = idx.slice(win).map((i) => D.months[i]), cash = idx.slice(win).map((i) => D.cash[i]);
@@ -88,8 +90,8 @@ $js
     const eqR = idx.slice(win).map((i) => A.reduce((s, c) => s + D[c][i], 0) / A.length);
     const sixty = idx.slice(win).map((i) => 0.6 * D.equity[i] + 0.4 * D.gilt10[i]);
     const series = [["risk parity", rpR, css("--accent")], ["60/40 (stocks/10-year gilt)", sixty, css("--text")], ["equal weight", eqR, css("--muted")]];
-    el("rp-status").textContent = `${months.length} months, ${months[0].slice(0, 7)} to ${months[months.length - 1].slice(0, 7)}; weights from the previous ${win} months.`;
-    el("rp-table").tBodies[0].innerHTML = series.map(([nm, r]) => { const s = stats(r, cash, months); return `<tr><td>${nm}</td><td>${pct(s.cagr)}</td><td>${pct(s.vol)}</td><td>${s.sharpe.toFixed(2)}</td><td>${pct(s.dd, 0)}</td></tr>`; }).join("");
+    el("rp-status").textContent = `${months.length} months, ${months[0].slice(0, 7)} to ${months[months.length - 1].slice(0, 7)}; weights from the previous ${win} months.${moved}`;
+    el("rp-table").tBodies[0].innerHTML = series.map(([nm, r]) => { const s = stats(r, cash, months); return `<tr><td>${nm}</td><td>${pct(s.cagr)}</td><td>${pct(s.vol)}</td><td>${s.sharpe.toFixed(2).replace("-", "−")}</td><td>${pct(s.dd, 0)}</td></tr>`; }).join("");
     const grow = (r) => { let w = 1; return r.map((v) => (w *= 1 + v)); };
     Plotly.react("rp-growth", series.map(([nm, r, c]) => ({ x: months, y: grow(r), name: nm, mode: "lines", line: { color: c, width: nm === "risk parity" ? 2.4 : 1.5 }, hovertemplate: `${nm}: ₹%{y:.2f}<extra></extra>` })),
       Object.assign(base(), { legend: legendFor("rp-growth"), margin: marginFor("rp-growth"), xaxis: axis(""), yaxis: axis("₹1 grows to", { tickprefix: "₹" }) }), cfg);

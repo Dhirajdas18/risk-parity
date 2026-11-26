@@ -46,7 +46,7 @@ def stats(ret: pd.Series, cash: pd.Series) -> dict:
     e = ret - cash
     return {"cagr": float(wealth.iloc[-1] ** (1 / years) - 1),
             "vol": float(ret.std() * np.sqrt(12)),
-            "sharpe": float(e.mean() / e.std() * np.sqrt(12)),
+            "sharpe": float(e.mean() / e.std() * np.sqrt(12)) if e.std() > 0 else float("nan"),
             "dd": float((wealth / wealth.cummax() - 1).min())}
 
 
@@ -60,7 +60,27 @@ def exante_vol(r: pd.DataFrame, o: pd.DataFrame, window: int = 36) -> pd.Series:
     return pd.Series(v, index=o.index)
 
 
-def lever(ret: pd.Series, L: pd.Series | float, rate: pd.Series) -> pd.Series:
+def lever(ret: pd.Series, L: pd.Series | float, rate: pd.Series, cost: float = 0.0) -> pd.Series:
     """Return on L rupees of the portfolio per rupee of capital, borrowing L - 1 at `rate`
-    (monthly)."""
-    return L * ret - (L - 1) * rate.reindex(ret.index)
+    (monthly); changing L trades |L_t - L_t-1| rupees at `cost` each (the first month is free)."""
+    out = L * ret - (L - 1) * rate.reindex(ret.index)
+    if cost and isinstance(L, pd.Series):
+        out = out - cost * L.diff().abs().fillna(0)
+    return out
+
+
+def sharpe_diff(a: pd.Series, b: pd.Series, cash: pd.Series) -> tuple[float, float]:
+    """Difference of two strategies' Sharpe ratios above cash (a minus b, a year) and its standard
+    error from the paired monthly returns (Jobson-Korkie with Memmel's correction)."""
+    ea, eb = a - cash.reindex(a.index), b - cash.reindex(b.index)
+    sa, sb = ea.mean() / ea.std(), eb.mean() / eb.std()
+    rho = ea.corr(eb)
+    var = (2 - 2 * rho + 0.5 * (sa**2 + sb**2 - 2 * sa * sb * rho**2)) / len(ea)
+    return float((sa - sb) * np.sqrt(12)), float(np.sqrt(var * 12))
+
+
+def mean_diff(a: pd.Series, b: pd.Series) -> tuple[float, float]:
+    """Difference of two strategies' average returns (a minus b, a year) and its standard error
+    from the paired monthly differences."""
+    d = a - b
+    return float(d.mean() * 12), float(d.std() * np.sqrt(12 / len(d)))

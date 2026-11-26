@@ -52,3 +52,22 @@ def test_lever_and_exante_vol():
     out = B.lever(o["net"], 2.0, rate)
     assert np.allclose(out, 2 * o["net"] - 0.004)
     assert np.allclose(B.lever(o["net"], 1.0, rate), o["net"])
+
+
+def test_sharpe_diff_identical_and_paired_mean():
+    idx = pd.date_range("2000-01-31", periods=120, freq="ME")
+    rng = np.random.default_rng(2)
+    a = pd.Series(rng.normal(0.01, 0.03, 120), index=idx)
+    cash = pd.Series(0.004, index=idx)
+    d, se = B.sharpe_diff(a, a, cash)
+    assert d == 0 and se < 1e-6  # same strategy: no difference, no uncertainty
+    b = a + rng.normal(0, 0.001, 120)  # nearly identical: paired SE far below a single SE
+    md, mse = B.mean_diff(a, b)
+    assert mse < 0.03 * np.sqrt(12 / 120) / 5
+
+
+def test_lever_charges_leverage_changes():
+    idx = pd.date_range("2000-01-31", periods=3, freq="ME")
+    r, rate = pd.Series(0.0, index=idx), pd.Series(0.0, index=idx)
+    L = pd.Series([1.0, 2.0, 1.5], index=idx)
+    assert np.allclose(B.lever(r, L, rate, cost=0.01), [0, -0.01, -0.005])

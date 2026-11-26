@@ -51,7 +51,7 @@ only and holds them for the month (January 2007 to December 2025), with no costs
   0.77 against 0.41 and a worst fall of −8% against −39%. Equal weight compounded 12.7% (Sharpe
   0.70, worst fall −18%).
 
-### 2. Levered 2x at the cash rate, risk parity beat 60/40; at about 5% over cash, the gain was gone
+### 2. Levered about 2x at the cash rate, risk parity beat 60/40; at about 5% over cash, the gain was gone
 
 <a href="docs/img/leverage.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/leverage.png"><img src="docs/img/leverage.gif" alt="Growth of one rupee in 60/40, all stocks, unlevered risk parity and risk parity levered to 60/40's risk at three borrowing rates, and the leverage used each month, 2007-2025" width="720"></picture></a>
 
@@ -62,7 +62,7 @@ borrowed at IIMA's cash rate plus a spread; no trading costs, January 2007 to De
 compounded 6.4% a year over these months. For scale, Indian brokers' margin loans cost roughly
 9.65% to 15% a year in 2025 ([ICICI Direct](https://www.icicidirect.com/margin-trading-funding),
 [Zerodha](https://support.zerodha.com/category/trading-and-markets/margins/margin-trading-facility/articles/does-zerodha-offer-lower-mtf-interest-rate)),
-about 3 to 8 points above cash. The test assumes the whole portfolio, gilts and gold included, can
+3.9 to 9.2 points above 2025's cash rate of 5.8%. The test assumes the whole portfolio, gilts and gold included, can
 be borrowed against.
 
 - **It took about 2 times leverage.** On average ₹2.01 invested per rupee owned, between 1.47 and
@@ -73,11 +73,11 @@ be borrowed against.
 - **The borrowing rate decided the result.** Borrowing at cash + 3% gave 13.6% a year (Sharpe
   0.52); at cash + 8% it gave 8.1% (Sharpe 0.17), below 60/40's 11.3% and all stocks' 12.3%.
   Levered risk parity only grew as fast as 60/40 when borrowing cost 5.1% a year over cash, still
-  with a smaller worst fall (−28%).
+  with a smaller worst fall (−28%). That break-even sits inside the range of retail margin loans.
 - **Without borrowing,** risk parity compounded 11.6% a year with 6.4% volatility and a worst fall
   of −8%: about 60/40's growth with half the swings.
 
-### 3. How risk parity was estimated barely mattered: 10.8% to 11.5% a year after costs
+### 3. Estimation choices moved risk parity by at most 0.7 points a year after costs; longer windows and yearly trades did best
 
 <a href="docs/img/estimation.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/estimation.png"><img src="docs/img/estimation.gif" alt="Growth after costs and trading cost a year for risk parity estimated from 12, 36 or 60 months, plain or fading weights, rebalanced monthly, quarterly or yearly, 2009-2025" width="720"></picture></a>
 
@@ -94,14 +94,17 @@ which leaves about 0.2% for the bid-ask spread, not measured here. Fund expense 
 rebalancing gains are not included.
 
 - **Every version compounded 10.8% to 11.5% a year after costs,** with volatility of 5.7% to 6.0%,
-  Sharpe ratios of 0.73 to 0.83 and the same worst fall, −4%. One standard error of a 17-year
-  average return at 5.8% volatility is about 1.4 points a year, twice that whole range.
+  Sharpe ratios of 0.73 to 0.83 and the same worst fall, −4%.
+- **The differences were small but not luck.** The versions hold the same assets, so they move
+  almost together. The best (60 months, fading, yearly) beat the worst (12 months, plain,
+  quarterly) by 0.64 points a year on average, with a standard error of the paired monthly
+  differences of 0.10 points.
 - **Costs were small.** Monthly rebalancing on a 12-month window traded 40% of the portfolio a year
   and cost 0.20% a year; yearly rebalancing on 36 or 60 months traded 5% to 7% and cost 0.02% to
   0.04%.
 - **Yearly rebalancing came out ahead before costs too:** on 36 months, plain, 11.4% a year against
   11.2% monthly, so costs explain little of its edge.
-- **Fading weights changed nothing that matters:** within 0.1 points a year of the plain version at
+- **Fading weights changed little:** within 0.1 points a year of the plain version at
   every window and frequency.
 - **60/40 did well in these months.** Starting after the 2008 crash, it compounded 12.8% a year with
   11.2% volatility (Sharpe 0.59, worst fall −14%), more growth than risk parity but less per unit of
@@ -114,12 +117,13 @@ rebalancing gains are not included.
 Four stress windows, by month: the 2008 crash (January 2008 to February 2009), the 2013 taper scare
 (June to August 2013), the Covid fall (February to March 2020) and the 2022 rate rises (January to
 June 2022). Portfolios are walk-forward as in finding 1 (36-month window, monthly) and pay 0.25% per
-rupee traded; the levered version is finding 2's, borrowing at cash + 3%. An asset's contribution is
+rupee traded; the levered version is finding 2's (1.8 to 3.0 times in these windows), borrowing at
+cash + 3% and paying the same 0.25% when its leverage changes. An asset's contribution is
 its weight times its return, summed over the window's months.
 
-| Window | 60/40 | Equal weight | Risk parity | Risk parity 2x | Stocks | 10-year gilt | Gold (₹) |
+| Window | 60/40 | Equal weight | Risk parity | Risk parity levered | Stocks | 10-year gilt | Gold (₹) |
 |---|---|---|---|---|---|---|---|
-| 2008 crash | −36.4% | −8.0% | **+11.2%** | +8.8% | −60.7% | +18.1% | +45.5% |
+| 2008 crash | −36.4% | −8.0% | **+11.2%** | +8.2% | −60.7% | +18.1% | +45.5% |
 | 2013 taper | −5.9% | +2.4% | −1.9% | −6.9% | −5.2% | −7.0% | +19.8% |
 | 2020 Covid | −13.3% | −5.4% | −3.3% | −7.1% | −23.2% | +2.6% | +5.3% |
 | 2022 rate rises | −6.5% | −2.4% | −2.2% | −7.2% | −9.4% | −2.4% | +4.8% |
@@ -154,11 +158,14 @@ walk-forward from January 2009 (204 months), rebalanced monthly, paying 0.25% pe
 | 60/40 | 12.8% | 11.2% | 0.59 | −14% | 11% |
 
 - **With a 60-month window the order held.** Risk parity's Sharpe ratio was 0.78, against 0.52 for
-  minimum variance and 0.50 for maximum Sharpe. One standard error of a Sharpe ratio over 17 years
-  is about 0.24, so risk parity's lead was about 1 to 2 standard errors.
+  minimum variance and 0.50 for maximum Sharpe.
+- **The lead over minimum variance was clear; over maximum Sharpe, likely.** Tested on the paired
+  monthly returns, risk parity's Sharpe ratio beat minimum variance's by 0.28 (standard error 0.11,
+  t = 2.6) and maximum Sharpe's by 0.45 (0.21, t = 2.1); with 60 months, by 0.26 (t = 2.6) and
+  0.28 (t = 1.6). Its lead over 60/40, 0.20, was one standard error (t = 1.0).
 - **Maximum Sharpe chased past winners.** Its weights swung by about 30 points (standard deviation)
   and it traded 110% of the portfolio a year. In 36 of the 204 months it put over 90% in one asset:
-  gold through 2012 to 2014, stocks through 2014 to 2016.
+  gold in 17 months of 2012 to 2014, stocks in 17 months of 2014 to 2016 and 2 of 2023.
 - **Minimum variance hid in the gilt.** It held 77% in the 10-year gilt on average and had the lowest
   volatility, 5.2%, but compounded 2.1 points a year less than risk parity.
 - **Hindsight shows what a perfect forecast was worth.** Maximum-Sharpe weights chosen from the whole
@@ -184,12 +191,13 @@ the 2012-2013 rises took it from 2% to 10% in steps.
 | Stocks + 5-year gilt + gold | 10.7% | 4.8% | **0.85** | −5% |
 | All four | 10.4% | 4.9% | 0.77 | −6% |
 
-- **Gold mattered most.** Leaving it out cut the Sharpe ratio from 0.76 to 0.47 and lowered growth
-  from 11.5% to 9.8% a year.
+- **Gold mattered most.** Leaving it out cut the Sharpe ratio from 0.76 to 0.47 (paired standard
+  error 0.15, t = −1.9) and lowered growth from 11.5% to 9.8% a year. Gold in rupees compounded
+  14.7% a year over 2004-2025, about as much as stocks; a period of weaker gold would shrink this.
 - **Bonds mattered for the falls.** Without a gilt, stocks and gold grew 15.6% a year but fell as far
   as −25%.
 - **The 5-year gilt matched the 10-year per unit of risk.** Its Sharpe ratio was 0.85 against 0.76,
-  a gap well within one standard error (about 0.23), with lower growth and lower volatility. Adding
+  a gap of one paired standard error (0.09, t = 1.0), with lower growth and lower volatility. Adding
   both gilts gave 0.77.
 - **How gold is measured moved risk parity by about 0.4 points a year.** From February 2012, risk
   parity with COMEX gold compounded 10.9% a year (Sharpe 0.83) and with GOLDBEES 10.5% (0.78).
@@ -203,12 +211,15 @@ the 2012-2013 rises took it from 2% to 10% in steps.
 
 <a href="docs/img/verdict.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/verdict.png"><img src="docs/img/verdict.gif" alt="Growth of one rupee and falls from the peak for risk parity, 60/40 and equal weight on stocks, the 10-year gilt and the GOLDBEES ETF, rebalanced yearly, 2012-2025" width="720"></picture></a>
 
-The rule findings 1 to 6 point to, on assets an Indian investor can buy: risk parity on stocks, the
+The rule findings 1 to 6 point to, with gold an investor can buy: risk parity on stocks, the
 10-year gilt and the GOLDBEES ETF, covariance from the past 36 months, rebalanced once a year,
 without borrowing, paying 0.25% per rupee traded. It starts in February 2012, 36 months after
 GOLDBEES' returns begin, and runs to December 2025 (167 months), against 60/40 and equal weight on
 the same assets and costs. These settings were chosen after seeing 2007-2025, so this is a check of
-the rule on investable assets, not a fresh out-of-sample test.
+the rule with investable gold, not a fresh out-of-sample test. Stocks are IIMA's index and the
+gilt a constant-maturity bond, with no fund fees; GOLDBEES' price is after its fees, so risk parity
+and equal weight carry a fee that 60/40 does not. Fund fees and tax (debt funds are taxed at slab
+rates, gold ETF gains have their own rules) are left out.
 
 | Feb 2012 - Dec 2025 | Compounded a year | Volatility | Sharpe | Worst fall | Turnover a year |
 |---|---|---|---|---|---|
@@ -220,21 +231,23 @@ the rule on investable assets, not a fresh out-of-sample test.
   third of its worst fall, and grew 2.1 points a year less. Trading cost 0.02% a year.
 - **The halves disagreed.** From February 2012 to December 2018 risk parity's Sharpe ratio was
   0.12 against 60/40's 0.47; from January 2019 to December 2025 it was 1.37 against 0.83.
+- **Its Sharpe lead over 60/40 was not significant:** 0.13, with a paired standard error of 0.22.
 - **Equal thirds did about as well.** With gold in the mix, equal weight's Sharpe ratio was 0.82
-  against risk parity's 0.79, with more growth (12.0%) and a −6% worst fall.
+  against risk parity's 0.79 (difference −0.03, standard error 0.10), with more growth (12.0%) and
+  a −6% worst fall.
 
 ## Verdict
 
 | Question | Answer | Evidence |
 |---|---|---|
 | Does risk parity spread risk evenly? | Yes | 60/40's stocks carried 96% of its risk; risk parity's three assets a third each (finding 1) |
-| Does it earn more than 60/40 without borrowing? | No | About the same 2007-2025 (11.6% against 11.3%), thanks to 2008; 2.1 points a year less since 2012 (findings 1, 7) |
-| Does it earn more per unit of risk? | Mostly | Sharpe 0.79 against 0.66 since 2012, but 0.12 against 0.47 in 2012-2018 (finding 7) |
-| Does borrowing fix the return gap? | Only with cheap borrowing | Beat 60/40 below about 5 points over cash; retail margin loans cost about 3 to 8 points over (finding 2) |
-| Do the estimation settings matter? | No | All 18 versions within 0.7 points a year, under one standard error (finding 3) |
+| Does it earn more than 60/40 without borrowing? | No | About the same 2007-2025 (11.6% against 11.3%), but from 2009, after the crash, 11.1% against 12.8%; 2.1 points a year less since 2012 (findings 1, 3, 7) |
+| Does it earn more per unit of risk? | Probably, not proven | Sharpe 0.79 against 0.66 since 2012 (t = 0.6), and 0.12 against 0.47 in 2012-2018 (finding 7) |
+| Does borrowing fix the return gap? | Only with cheap borrowing | Beat 60/40 below 5.1 points over cash; retail margin loans cost 3.9 to 9.2 points over (finding 2) |
+| Do the estimation settings matter? | A little | All 18 versions within 0.7 points a year; longer windows and yearly trades did best (finding 3) |
 | Does it protect in crises? | Yes, unlevered | +11% in 2008 against 60/40's −36%; −0.19% a month in stocks' worst months against −5.03% (finding 4) |
-| Is it better than optimising on past returns? | Yes | Sharpe 0.79 against 0.51 and 0.34, by 1 to 2 standard errors (finding 5) |
-| What matters most? | Holding gold | Sharpe 0.76 with gold, 0.47 without; equal thirds with gold about as good as risk parity (findings 6, 7) |
+| Is it better than optimising on past returns? | Yes against minimum variance, likely against maximum Sharpe | Sharpe 0.79 against 0.51 (t = 2.6) and 0.34 (t = 2.1) (finding 5) |
+| What matters most? | Holding gold, in this sample | Sharpe 0.76 with gold, 0.47 without, while gold earned about as much as stocks; equal thirds with gold about as good as risk parity (findings 6, 7) |
 
 For a portfolio beyond Indian stocks: hold stocks, a gilt and gold, sized by risk (risk parity, or
 simply equal thirds), rebalanced once a year, without borrowing at retail rates. Expect smaller
