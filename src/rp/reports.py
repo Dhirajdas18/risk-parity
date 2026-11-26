@@ -426,6 +426,59 @@ def report_assets(out_dir: Path) -> dict:
     return res
 
 
+def report_verdict(out_dir: Path) -> dict:
+    """Verdict: the rule the earlier topics point to, run on investable assets. Risk parity (ERC)
+    on stocks, the 10-year gilt and GOLDBEES, covariance from the past 36 months, rebalanced once a
+    year, unlevered, 0.25% per rupee traded, from Feb 2012 (36 months after GOLDBEES starts) to
+    Dec 2025; against 60/40 and equal weight on the same assets and costs, over the whole period
+    and each half."""
+    from rp import assets, gold
+    from rp import backtest as B
+    from rp import weights as W
+
+    t = assets.table()
+    cash = t["cash"]
+    g = gold.monthly()["goldbees"].pct_change().rename("goldbees")
+    X = t[["equity", "gilt10"]].join(g).dropna()
+    rl = {"risk parity": lambda p: W.erc(cov(p)), "60/40": lambda p: np.array([0.6, 0.4, 0]),
+          "equal weight": lambda p: np.full(3, 1 / 3)}
+    runs = {k: B.run(X, f, 36, cost=0.0025, every=12) for k, f in rl.items()}
+    idx = runs["risk parity"].index
+    half = idx[len(idx) // 2]
+    res = {"months": f"{len(idx)}, {idx[0]:%b %Y}-{idx[-1]:%b %Y}"}
+    for k, o in runs.items():
+        yrs = len(o) / 12
+        res[f"  {k}"] = fmt(B.stats(o["net"], cash)) + (
+            f"; turnover {o['turnover'].sum() / yrs:.0%} a year, cost "
+            f"{o['cost'].sum() / yrs:.2%} a year; average weights "
+            + ", ".join(f"{c} {o[c].mean():.0%}" for c in X))
+        for a, b in ((idx[0], idx[idx < half][-1]), (half, idx[-1])):
+            res[f"    {k}, {a:%b %Y}-{b:%b %Y}"] = fmt(B.stats(o["net"].loc[a:b], cash))
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.3, 1]})
+    cl = {"risk parity": plots.SERIES[0], "60/40": plots.TEXT, "equal weight": plots.MUTED}
+    for k, o in runs.items():
+        w = (1 + o["net"]).cumprod()
+        axes[0].plot(w.index, w, color=cl[k], lw=1.8 if k == "risk parity" else 1.3, label=k)
+        axes[1].plot(w.index, (w / w.cummax() - 1) * 100, color=cl[k],
+                     lw=1.6 if k == "risk parity" else 1.1, label=k)
+    axes[0].yaxis.set_major_formatter(lambda v, _: f"₹{v:g}")
+    axes[0].set_ylabel("₹1 from 2012, after 0.25% costs")
+    axes[0].legend(frameon=False, fontsize=8.5, loc="upper left")
+    axes[0].set_title("Stocks, 10-year gilt, GOLDBEES; rebalanced yearly", fontsize=10.5,
+                      loc="left")
+    axes[1].yaxis.set_major_formatter(
+        lambda v, _: "0%" if round(v) == 0 else f"{v:.0f}%".replace("-", "−"))
+    axes[1].set_ylabel("fall from the previous peak")
+    axes[1].set_title("Falls from the peak", fontsize=10.5, loc="left")
+    fig.suptitle("Since 2012, risk parity grew 2.1 points a year less than 60/40, with a third of "
+                 "its worst fall", x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout()
+    plots.save(fig, out_dir, "verdict")
+    plt.close(fig)
+    return res
+
+
 REPORTS: dict[str, Callable[[Path], dict]] = {
     "basics": report_basics,
     "leverage": report_leverage,
@@ -433,4 +486,5 @@ REPORTS: dict[str, Callable[[Path], dict]] = {
     "crises": report_crises,
     "optimisers": report_optimisers,
     "assets": report_assets,
+    "verdict": report_verdict,
 }

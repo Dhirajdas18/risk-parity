@@ -20,7 +20,7 @@ share of risk and growth against 60/40 and equal weight, computed month by month
 - [x] Crises: 2008, the 2013 taper, 2020 and 2022
 - [x] Risk parity against minimum variance and maximum Sharpe, out of sample
 - [x] Which assets: a short gilt, and how much gold's measurement matters
-- [ ] Verdict: a portfolio-construction rule for the reference model beyond stocks
+- [x] Verdict: a portfolio-construction rule for the reference model beyond stocks
 
 ## Findings
 
@@ -199,12 +199,53 @@ the 2012-2013 rises took it from 2% to 10% in steps.
   2024, close to the 7.8% that the cut from 15% to 6% implies (1.06 ÷ 1.15). From December 2011 to
   December 2013 it gained 16.4%, more than the rise from 2% to 10% alone implies (about 8%).
 
+### 7. Since 2012, risk parity grew 2.1 points a year less than 60/40, with a third of its worst fall
+
+<a href="docs/img/verdict.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/verdict.png"><img src="docs/img/verdict.gif" alt="Growth of one rupee and falls from the peak for risk parity, 60/40 and equal weight on stocks, the 10-year gilt and the GOLDBEES ETF, rebalanced yearly, 2012-2025" width="720"></picture></a>
+
+The rule findings 1 to 6 point to, on assets an Indian investor can buy: risk parity on stocks, the
+10-year gilt and the GOLDBEES ETF, covariance from the past 36 months, rebalanced once a year,
+without borrowing, paying 0.25% per rupee traded. It starts in February 2012, 36 months after
+GOLDBEES' returns begin, and runs to December 2025 (167 months), against 60/40 and equal weight on
+the same assets and costs. These settings were chosen after seeing 2007-2025, so this is a check of
+the rule on investable assets, not a fresh out-of-sample test.
+
+| Feb 2012 - Dec 2025 | Compounded a year | Volatility | Sharpe | Worst fall | Turnover a year |
+|---|---|---|---|---|---|
+| Risk parity | 10.7% | 5.1% | 0.79 | −4% | 5% |
+| 60/40 | 12.8% | 9.5% | 0.66 | −13% | 3% |
+| Equal weight | 12.0% | 6.5% | 0.82 | −6% | 4% |
+
+- **Risk parity was the calmest, not the richest.** It had about half of 60/40's volatility and a
+  third of its worst fall, and grew 2.1 points a year less. Trading cost 0.02% a year.
+- **The halves disagreed.** From February 2012 to December 2018 risk parity's Sharpe ratio was
+  0.12 against 60/40's 0.47; from January 2019 to December 2025 it was 1.37 against 0.83.
+- **Equal thirds did about as well.** With gold in the mix, equal weight's Sharpe ratio was 0.82
+  against risk parity's 0.79, with more growth (12.0%) and a −6% worst fall.
+
+## Verdict
+
+| Question | Answer | Evidence |
+|---|---|---|
+| Does risk parity spread risk evenly? | Yes | 60/40's stocks carried 96% of its risk; risk parity's three assets a third each (finding 1) |
+| Does it earn more than 60/40 without borrowing? | No | About the same 2007-2025 (11.6% against 11.3%), thanks to 2008; 2.1 points a year less since 2012 (findings 1, 7) |
+| Does it earn more per unit of risk? | Mostly | Sharpe 0.79 against 0.66 since 2012, but 0.12 against 0.47 in 2012-2018 (finding 7) |
+| Does borrowing fix the return gap? | Only with cheap borrowing | Beat 60/40 below about 5 points over cash; retail margin loans cost about 3 to 8 points over (finding 2) |
+| Do the estimation settings matter? | No | All 18 versions within 0.7 points a year, under one standard error (finding 3) |
+| Does it protect in crises? | Yes, unlevered | +11% in 2008 against 60/40's −36%; −0.19% a month in stocks' worst months against −5.03% (finding 4) |
+| Is it better than optimising on past returns? | Yes | Sharpe 0.79 against 0.51 and 0.34, by 1 to 2 standard errors (finding 5) |
+| What matters most? | Holding gold | Sharpe 0.76 with gold, 0.47 without; equal thirds with gold about as good as risk parity (findings 6, 7) |
+
+For a portfolio beyond Indian stocks: hold stocks, a gilt and gold, sized by risk (risk parity, or
+simply equal thirds), rebalanced once a year, without borrowing at retail rates. Expect smaller
+falls and, in strong stock markets, less growth than 60/40.
+
 ## Quick start
 
 ```bash
 uv sync
 uv run python scripts/fetch_data.py   # IIMA, RBI yields and Yahoo gold -> data/
-uv run rp report basics               # topics: basics, leverage, estimation, crises, optimisers, assets
+uv run rp report verdict              # also: basics, leverage, estimation, crises, optimisers, assets
 uv run python scripts/build_site.py   # risk parity lab -> site/index.html
 uv run pytest
 ```
