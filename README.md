@@ -86,6 +86,12 @@ Eighteen versions of risk parity on stocks, the 10-year gilt and gold, all walk-
 from the past 12, 36 or 60 months, either plain or with exponentially fading weights (a month 12
 months old counts half as much as the latest), and trades every month, quarter or year back to the
 target weights. Every rupee traded pays an assumed 0.25% one way; costs scale in proportion to it.
+That is generous: buying an ETF through a zero-brokerage broker costs about 0.02% in stamp duty,
+exchange and SEBI charges, and selling under 0.01%
+([Zerodha charges](https://zerodha.com/charges); STT is 0.001% on selling most ETFs and nil on gold
+and gilt ETFs, [Zerodha support](https://support.zerodha.com/category/account-opening/charges-at-zerodha/articles/stt-etfs)),
+which leaves about 0.2% for the bid-ask spread, not measured here. Fund expense ratios and tax on
+rebalancing gains are not included.
 
 - **Every version compounded 10.8% to 11.5% a year after costs,** with volatility of 5.7% to 6.0%,
   Sharpe ratios of 0.73 to 0.83 and the same worst fall, −4%. One standard error of a 17-year
