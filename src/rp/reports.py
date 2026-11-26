@@ -103,6 +103,70 @@ def report_basics(out_dir: Path) -> dict:
     return res
 
 
+def report_leverage(out_dir: Path) -> dict:
+    """Leverage: risk parity scaled each month to 60/40's forecast volatility (both forecasts from
+    the same past 36 months, leverage capped at 4), borrowing the extra at the cash rate plus a
+    spread; against unlevered risk parity, 60/40 and all stocks (Jan 2007 - Dec 2025, no trading
+    costs). Also the spread over cash at which levered risk parity only matches 60/40's growth."""
+    from rp import assets
+    from rp import backtest as B
+
+    t = assets.table()
+    R, cash = t[RISKY], t["cash"]
+    ru = rules()
+    erc, s64 = B.run(R, ru["risk parity (ERC)"]), B.run(R, ru["60/40"])
+    stocks = B.run(R, lambda p: np.array([1.0, 0, 0]))
+    L = (B.exante_vol(R, s64) / B.exante_vol(R, erc)).clip(upper=4)
+    res = {"leverage": f"average {L.mean():.2f}x, range {L.min():.2f}-{L.max():.2f}x",
+           "cash": f"compounded {B.stats(cash.loc[L.index], cash)['cagr']:.1%} a year"}
+    curves = {"60/40": s64["net"], "all stocks": stocks["net"],
+              "risk parity, no borrowing": erc["net"]}
+    for sp in (0.0, 0.03, 0.08):
+        curves[f"risk parity levered, borrowing at cash + {sp:.0%}"] = B.lever(
+            erc["net"], L, cash + sp / 12)
+    for k, v in curves.items():
+        res[f"  {k}"] = fmt(B.stats(v, cash))
+    target = B.stats(s64["net"], cash)["cagr"]
+    lo, hi = 0.0, 0.2
+    for _ in range(40):
+        m = (lo + hi) / 2
+        c = B.stats(B.lever(erc["net"], L, cash + m / 12), cash)["cagr"]
+        lo, hi = (m, hi) if c > target else (lo, m)
+    res["break-even spread over cash (levered risk parity grows like 60/40)"] = f"{m:.1%} a year"
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.4, 1]})
+    ax = axes[0]
+    cl = {"60/40": plots.TEXT, "all stocks": plots.MUTED,
+          "risk parity, no borrowing": plots.SERIES[2]}
+    lev_col = [plots.SERIES[0], plots.SERIES[3], plots.SERIES[1]]
+    for k, v in curves.items():
+        w = (1 + v).cumprod()
+        c = cl.get(k) or lev_col.pop(0)
+        ax.plot(w.index, w, color=c, lw=1.8 if "levered" in k else 1.3,
+                label=k.replace("risk parity levered, borrowing", "levered, borrow"))
+    ax.set_yscale("log")
+    ax.set_yticks([1, 2, 5, 10, 20], minor=False)
+    ax.yaxis.set_minor_formatter(lambda v, _: "")
+    ax.yaxis.set_major_formatter(lambda v, _: f"₹{v:g}")
+    ax.set_ylabel("₹1 from 2007, no trading costs")
+    ax.legend(frameon=False, fontsize=8.5, loc="upper left")
+    ax.set_title("Risk parity scaled to 60/40's risk", fontsize=10.5, loc="left")
+    ax = axes[1]
+    ax.plot(L.index, L, color=plots.SERIES[0], lw=1.5)
+    ax.axhline(1, color=plots.MUTED, lw=0.8)
+    ax.set_ylim(0, 3.5)
+    ax.yaxis.set_major_formatter(lambda v, _: f"{v:g}x")
+    ax.set_ylabel("rupees invested per rupee owned")
+    ax.set_title("Leverage needed, from the past 36 months", fontsize=10.5, loc="left")
+    fig.suptitle("Levered 2x at the cash rate, risk parity beat 60/40; at about 5% over cash, "
+                 "the gain was gone", x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout()
+    plots.save(fig, out_dir, "leverage")
+    plt.close(fig)
+    return res
+
+
 REPORTS: dict[str, Callable[[Path], dict]] = {
     "basics": report_basics,
+    "leverage": report_leverage,
 }

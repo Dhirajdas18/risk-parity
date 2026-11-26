@@ -15,7 +15,7 @@ share of risk and growth against 60/40 and equal weight, computed month by month
 ## Features
 
 - [x] What risk parity does: equal risk contribution against 60/40, equal weight and inverse volatility
-- [ ] Leverage: unlevered risk parity, borrowing at Indian rates, and a volatility target
+- [x] Leverage: unlevered risk parity, borrowing at Indian rates, and a volatility target
 - [ ] Estimation window, EWMA and rebalancing frequency, after costs, out of sample
 - [ ] Crises: 2008, the 2013 taper, 2020 and 2022
 - [ ] Risk parity against minimum variance and maximum Sharpe, out of sample
@@ -51,12 +51,38 @@ only and holds them for the month (January 2007 to December 2025), with no costs
   0.77 against 0.41 and a worst fall of −8% against −39%. Equal weight compounded 12.7% (Sharpe
   0.70, worst fall −18%).
 
+### 2. Levered 2x at the cash rate, risk parity beat 60/40; at about 5% over cash, the gain was gone
+
+<a href="docs/img/leverage.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/leverage.png"><img src="docs/img/leverage.gif" alt="Growth of one rupee in 60/40, all stocks, unlevered risk parity and risk parity levered to 60/40's risk at three borrowing rates, and the leverage used each month, 2007-2025" width="720"></picture></a>
+
+Unlevered risk parity had half of 60/40's volatility, so to compare like with like it has to borrow.
+Each month, the risk-parity portfolio is scaled so its forecast volatility equals 60/40's, both
+forecast from the same past 36 months (leverage capped at 4 times, never reached), and the extra is
+borrowed at IIMA's cash rate plus a spread; no trading costs, January 2007 to December 2025. Cash
+compounded 6.4% a year over these months. For scale, Indian brokers' margin loans cost roughly
+9.65% to 15% a year in 2025 ([ICICI Direct](https://www.icicidirect.com/margin-trading-funding),
+[Zerodha](https://support.zerodha.com/category/trading-and-markets/margins/margin-trading-facility/articles/does-zerodha-offer-lower-mtf-interest-rate)),
+about 3 to 8 points above cash. The test assumes the whole portfolio, gilts and gold included, can
+be borrowed against.
+
+- **It took about 2 times leverage.** On average ₹2.01 invested per rupee owned, between 1.47 and
+  2.99 times; the most was in late 2008.
+- **At the cash rate, levered risk parity beat 60/40.** It compounded 17.1% a year against 11.3%,
+  with a worst fall of −25% against −39%. Its volatility came out at 14.6%, above 60/40's 13.0%,
+  although the forecasts matched.
+- **The borrowing rate decided the result.** Borrowing at cash + 3% gave 13.6% a year (Sharpe
+  0.52); at cash + 8% it gave 8.1% (Sharpe 0.17), below 60/40's 11.3% and all stocks' 12.3%.
+  Levered risk parity only grew as fast as 60/40 when borrowing cost 5.1% a year over cash, still
+  with a smaller worst fall (−28%).
+- **Without borrowing,** risk parity compounded 11.6% a year with 6.4% volatility and a worst fall
+  of −8%: about 60/40's growth with half the swings.
+
 ## Quick start
 
 ```bash
 uv sync
 uv run python scripts/fetch_data.py   # IIMA, RBI yields and Yahoo gold -> data/
-uv run rp report basics               # topics: basics
+uv run rp report basics               # topics: basics, leverage
 uv run python scripts/build_site.py   # risk parity lab -> site/index.html
 uv run pytest
 ```
@@ -72,8 +98,8 @@ The data files are downloaded, not committed.
 - `src/rp/assets.py`: the monthly asset table; gilt returns by repricing a par bond.
 - `src/rp/weights.py`: risk contributions, inverse volatility, equal risk contribution (cyclical
   coordinate descent), minimum variance and maximum Sharpe (SLSQP).
-- `src/rp/backtest.py`: walk-forward portfolios from past months only, with turnover and costs, and
-  summary statistics.
+- `src/rp/backtest.py`: walk-forward portfolios from past months only, with turnover and costs,
+  volatility forecasts, leverage at a borrowing rate, and summary statistics.
 - `src/rp/rp.js`: the lab's browser copy of the covariance, ERC weights and walk-forward, tested
   against Python through Node.
 - `src/rp/site.py`: the risk parity lab, one static Plotly page carrying the monthly returns.

@@ -48,3 +48,19 @@ def stats(ret: pd.Series, cash: pd.Series) -> dict:
             "vol": float(ret.std() * np.sqrt(12)),
             "sharpe": float(e.mean() / e.std() * np.sqrt(12)),
             "dd": float((wealth / wealth.cummax() - 1).min())}
+
+
+def exante_vol(r: pd.DataFrame, o: pd.DataFrame, window: int = 36) -> pd.Series:
+    """Each month's volatility forecast (a year) for the weights held in `o`, from the same past
+    `window` months the weights were set from."""
+    pos = r.index.get_indexer(o.index)
+    X, W = r.to_numpy(), o[list(r.columns)].to_numpy()
+    v = [np.sqrt(w @ np.cov(X[t - window:t], rowvar=False) @ w * 12) for t, w in zip(pos, W,
+                                                                                  strict=True)]
+    return pd.Series(v, index=o.index)
+
+
+def lever(ret: pd.Series, L: pd.Series | float, rate: pd.Series) -> pd.Series:
+    """Return on L rupees of the portfolio per rupee of capital, borrowing L - 1 at `rate`
+    (monthly)."""
+    return L * ret - (L - 1) * rate.reindex(ret.index)
