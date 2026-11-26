@@ -1,0 +1,42 @@
+[project]
+name = "risk-parity"
+version = "0.1.0"
+description = "Risk parity across Indian stocks, government bonds, gold and cash, 2004-2025: equal risk contribution against inverse volatility, 60/40, minimum variance and maximum Sharpe, leverage, estimation and rebalancing out of sample, crises, with a live in-browser lab."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Dhirajdas18" }]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.5",
+    "pandas>=3.1.1",
+    "pillow>=13.0.0",
+    "pyarrow>=26.0.1",
+    "scipy>=1.18.1",
+    "yfinance>=1.8.0",
+]
+
+[project.scripts]
+rp = "rp.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "rp"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

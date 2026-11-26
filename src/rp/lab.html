@@ -1,0 +1,109 @@
+<div class="calc">
+  <div class="calc-controls">
+    <fieldset style="border:0;padding:0;margin:0;display:flex;gap:8px 20px;flex-wrap:wrap;flex-basis:100%">
+      <legend style="font-size:0.875rem;color:var(--text-2);margin-bottom:4px">Assets</legend>
+      <label style="flex-direction:row;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="rp-equity" checked> stocks</label>
+      <label style="flex-direction:row;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="rp-gilt10" checked> 10-year gilt</label>
+      <label style="flex-direction:row;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="rp-gilt5"> 5-year gilt</label>
+      <label style="flex-direction:row;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="rp-gold" checked> gold</label>
+    </fieldset>
+    <label>From <select id="rp-from"></select></label>
+    <label>To <select id="rp-to"></select></label>
+    <label>Estimate from the past <select id="rp-win"><option value="12">12 months</option><option value="36" selected>36 months</option><option value="60">60 months</option></select></label>
+  </div>
+</div>
+<p class="note" id="rp-status" aria-live="polite"></p>
+<div class="table-scroll"><table class="data compact" id="rp-table"><thead><tr><th>Portfolio</th><th>Compounded a year</th><th>Volatility</th><th>Sharpe above cash</th><th>Worst fall</th></tr></thead><tbody></tbody></table></div>
+<h3>Growth of ₹1</h3>
+<p class="note">How to read it: each month the risk-parity portfolio sets its weights from the
+previous months only, so every asset contributes the same share of risk, then holds them for the
+month. 60/40 is 60% stocks and 40% 10-year gilts; equal weight splits evenly across the assets you
+picked. No trading costs or tax.</p>
+<div id="rp-growth" class="sim-chart" role="img" aria-label="Growth of one rupee in risk parity, 60/40 and equal weight portfolios"></div>
+<h3>Risk-parity weights over time</h3>
+<p class="note">How to read it: the share of money in each asset at each month. Calmer assets get
+more money, so each carries the same risk.</p>
+<div id="rp-weights" class="sim-chart" role="img" aria-label="Stacked area chart of risk-parity weights over time"></div>
+<h3>Where the risk comes from, over the whole period</h3>
+<p class="note">How to read it: each asset’s share of the portfolio’s risk, using the whole
+period’s volatilities and correlations, for the average weights each portfolio held.</p>
+<div id="rp-risk" class="sim-chart short" role="img" aria-label="Bar chart of each asset's share of risk in each portfolio"></div>
+<script>
+$js
+(() => {
+  const D = $data;
+  const el = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const cfg = { displaylogo: false, responsive: true };
+  const ASSETS = ["equity", "gilt10", "gilt5", "gold"], NAME = { equity: "stocks", gilt10: "10-year gilt", gilt5: "5-year gilt", gold: "gold" };
+  const COL = $colors;
+  const narrowAt = (id) => el(id).clientWidth < 560;
+  const base = () => ({ paper_bgcolor: css("--surface"), plot_bgcolor: css("--surface"),
+    font: { family: getComputedStyle(document.body).fontFamily, color: css("--text-2"), size: 12 },
+    margin: { l: 64, r: 16, t: 32, b: 56 }, hovermode: "x unified" });
+  const legendFor = (id) => narrowAt(id)
+    ? { orientation: "h", x: 0, y: -0.2, yanchor: "top", font: { size: 11 } } : { orientation: "h", y: 1.02, yanchor: "bottom", x: 0 };
+  const marginFor = (id, b = 56) => ({ l: 72, r: 16, t: narrowAt(id) ? 24 : 56, b: narrowAt(id) ? b + 64 : b });
+  const axis = (title, extra = {}) => Object.assign({ title: { text: title }, gridcolor: css("--grid") }, extra);
+  const years = [...new Set(D.months.map((m) => m.slice(0, 4)))];
+  for (const id of ["rp-from", "rp-to"]) el(id).innerHTML = years.map((y) => `<option>${y}</option>`).join("");
+  const h = new URLSearchParams(location.hash.slice(1));
+  const fromH = (k, ok, set) => { const v = h.get(k); if (v !== null && ok(v)) set(v); };
+  el("rp-from").value = years[3] || years[0]; el("rp-to").value = years[years.length - 1];
+  fromH("from", (v) => years.includes(v), (v) => (el("rp-from").value = v));
+  fromH("to", (v) => years.includes(v), (v) => (el("rp-to").value = v));
+  fromH("win", (v) => ["12", "36", "60"].includes(v), (v) => (el("rp-win").value = v));
+  fromH("assets", (v) => /^[a-z0-9,]+$/.test(v), (v) => ASSETS.forEach((a) => (el("rp-" + a).checked = v.split(",").includes(a))));
+  const picked = () => ASSETS.filter((a) => el("rp-" + a).checked);
+  const save = () => history.replaceState(null, "", "#" + new URLSearchParams({ from: el("rp-from").value, to: el("rp-to").value, win: el("rp-win").value, assets: picked().join(",") }));
+  const pct = (v, dp = 1) => (v < 0 ? "−" : "") + Math.abs(100 * v).toFixed(dp) + "%";
+  function stats(r, cash, months) {
+    let w = 1, peak = 1, dd = 0;
+    for (const v of r) { w *= 1 + v; peak = Math.max(peak, w); dd = Math.min(dd, w / peak - 1); }
+    const years = (Date.parse(months[months.length - 1]) - Date.parse(months[0])) / 864e5 / 365.25 + 1 / 12;
+    const e = r.map((v, i) => v - cash[i]), me = e.reduce((s, v) => s + v, 0) / e.length;
+    const sd = (a) => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1)); };
+    return { cagr: w ** (1 / years) - 1, vol: sd(r) * Math.sqrt(12), sharpe: me / sd(e) * Math.sqrt(12), dd };
+  }
+  function draw() {
+    const A = picked(), win = +el("rp-win").value;
+    let a = el("rp-from").value, b = el("rp-to").value;
+    if (a > b) [a, b] = [b, a];
+    const clear = (msg) => {
+      el("rp-status").textContent = msg;
+      el("rp-table").tBodies[0].innerHTML = "";
+      ["rp-growth", "rp-weights", "rp-risk"].forEach((id) => Plotly.purge(id));
+    };
+    if (A.length < 2) return clear("Pick at least two assets.");
+    // rows: estimation window before the first chosen year, then the chosen years
+    const first = D.months.findIndex((m) => m.slice(0, 4) >= a);
+    const last = D.months.length - 1 - [...D.months].reverse().findIndex((m) => m.slice(0, 4) <= b);
+    const start = first - win;
+    if (start < 0) return clear(`Data starts in ${D.months[0].slice(0, 7)}; with a ${win}-month window the first usable year is ${D.months[win].slice(0, 4)}.`);
+    const idx = Array.from({ length: last - start + 1 }, (_, k) => start + k);
+    const X = idx.map((i) => A.map((c) => D[c][i]));
+    const months = idx.slice(win).map((i) => D.months[i]), cash = idx.slice(win).map((i) => D.cash[i]);
+    const rp = RP.run(X, (p) => RP.erc(RP.cov(p)), win);
+    const rpR = rp.map((o) => o.r);
+    const eqR = idx.slice(win).map((i) => A.reduce((s, c) => s + D[c][i], 0) / A.length);
+    const sixty = idx.slice(win).map((i) => 0.6 * D.equity[i] + 0.4 * D.gilt10[i]);
+    const series = [["risk parity", rpR, css("--accent")], ["60/40 (stocks/10-year gilt)", sixty, css("--text")], ["equal weight", eqR, css("--muted")]];
+    el("rp-status").textContent = `${months.length} months, ${months[0].slice(0, 7)} to ${months[months.length - 1].slice(0, 7)}; weights from the previous ${win} months.`;
+    el("rp-table").tBodies[0].innerHTML = series.map(([nm, r]) => { const s = stats(r, cash, months); return `<tr><td>${nm}</td><td>${pct(s.cagr)}</td><td>${pct(s.vol)}</td><td>${s.sharpe.toFixed(2)}</td><td>${pct(s.dd, 0)}</td></tr>`; }).join("");
+    const grow = (r) => { let w = 1; return r.map((v) => (w *= 1 + v)); };
+    Plotly.react("rp-growth", series.map(([nm, r, c]) => ({ x: months, y: grow(r), name: nm, mode: "lines", line: { color: c, width: nm === "risk parity" ? 2.4 : 1.5 }, hovertemplate: `${nm}: ₹%{y:.2f}<extra></extra>` })),
+      Object.assign(base(), { legend: legendFor("rp-growth"), margin: marginFor("rp-growth"), xaxis: axis(""), yaxis: axis("₹1 grows to", { tickprefix: "₹" }) }), cfg);
+    Plotly.react("rp-weights", A.map((c, j) => ({ x: months, y: rp.map((o) => o.w[j]), name: NAME[c], stackgroup: "w", mode: "lines", line: { width: 0.5, color: COL[c] }, fillcolor: COL[c], hovertemplate: `${NAME[c]}: %{y:.0%}<extra></extra>` })),
+      Object.assign(base(), { legend: legendFor("rp-weights"), margin: marginFor("rp-weights"), xaxis: axis(""), yaxis: axis("weight", { tickformat: ".0%", range: [0, 1] }) }), cfg);
+    const S = RP.cov(X.slice(win));
+    const avg = (ws) => A.map((_, j) => ws.reduce((s, w) => s + w[j], 0) / ws.length);
+    const w60 = A.map((c) => (c === "equity" ? 0.6 : c === "gilt10" ? 0.4 : 0));
+    const ports = [["risk parity", avg(rp.map((o) => o.w))], ["equal weight", A.map(() => 1 / A.length)]];
+    if (A.includes("equity") && A.includes("gilt10")) ports.push(["60/40", w60]);
+    Plotly.react("rp-risk", A.map((c, j) => ({ type: "bar", orientation: "h", y: ports.map(([n]) => n), x: ports.map(([, w]) => RP.riskShares(w, S)[j]), name: NAME[c], marker: { color: COL[c] }, hovertemplate: `${NAME[c]}: %{x:.0%}<extra></extra>` })),
+      Object.assign(base(), { barmode: "stack", hovermode: "closest", legend: legendFor("rp-risk"), margin: Object.assign(marginFor("rp-risk", 40), { l: 100 }), xaxis: axis("share of risk", { tickformat: ".0%", range: [0, 1] }), yaxis: { automargin: true } }), cfg);
+  }
+  ["rp-from", "rp-to", "rp-win", ...ASSETS.map((a) => "rp-" + a)].forEach((id) => el(id).addEventListener("change", () => { save(); draw(); }));
+  draw();
+})();
+</script>
