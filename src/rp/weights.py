@@ -57,3 +57,13 @@ def min_variance(S: np.ndarray) -> np.ndarray:
 def max_sharpe(S: np.ndarray, mu: np.ndarray) -> np.ndarray:
     """Long-only, fully invested maximum Sharpe ratio (mu = expected returns above cash)."""
     return _solve(lambda w: -(w @ mu) / np.sqrt(w @ S @ w), len(S))
+
+
+def ewma_cov(p: np.ndarray, half_life: float) -> np.ndarray:
+    """Covariance with exponentially fading weights: a month `half_life` months old counts half as
+    much as the latest one."""
+    k = len(p)
+    w = 0.5 ** (np.arange(k)[::-1] / half_life)
+    w /= w.sum()
+    d = p - w @ p
+    return (d * w[:, None]).T @ d / (1 - w @ w)

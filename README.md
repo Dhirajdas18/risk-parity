@@ -16,7 +16,7 @@ share of risk and growth against 60/40 and equal weight, computed month by month
 
 - [x] What risk parity does: equal risk contribution against 60/40, equal weight and inverse volatility
 - [x] Leverage: unlevered risk parity, borrowing at Indian rates, and a volatility target
-- [ ] Estimation window, EWMA and rebalancing frequency, after costs, out of sample
+- [x] Estimation window, EWMA and rebalancing frequency, after costs, out of sample
 - [ ] Crises: 2008, the 2013 taper, 2020 and 2022
 - [ ] Risk parity against minimum variance and maximum Sharpe, out of sample
 - [ ] Which assets: a short gilt, and how much gold's measurement matters
@@ -77,12 +77,36 @@ be borrowed against.
 - **Without borrowing,** risk parity compounded 11.6% a year with 6.4% volatility and a worst fall
   of −8%: about 60/40's growth with half the swings.
 
+### 3. How risk parity was estimated barely mattered: 10.8% to 11.5% a year after costs
+
+<a href="docs/img/estimation.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/estimation.png"><img src="docs/img/estimation.gif" alt="Growth after costs and trading cost a year for risk parity estimated from 12, 36 or 60 months, plain or fading weights, rebalanced monthly, quarterly or yearly, 2009-2025" width="720"></picture></a>
+
+Eighteen versions of risk parity on stocks, the 10-year gilt and gold, all walk-forward over the same
+204 months (January 2009 to December 2025, so even a 60-month window has data): the covariance
+from the past 12, 36 or 60 months, either plain or with exponentially fading weights (a month 12
+months old counts half as much as the latest), and trades every month, quarter or year back to the
+target weights. Every rupee traded pays an assumed 0.25% one way; costs scale in proportion to it.
+
+- **Every version compounded 10.8% to 11.5% a year after costs,** with volatility of 5.7% to 6.0%,
+  Sharpe ratios of 0.73 to 0.83 and the same worst fall, −4%. One standard error of a 17-year
+  average return at 5.8% volatility is about 1.4 points a year, twice that whole range.
+- **Costs were small.** Monthly rebalancing on a 12-month window traded 40% of the portfolio a year
+  and cost 0.20% a year; yearly rebalancing on 36 or 60 months traded 5% to 7% and cost 0.02% to
+  0.04%.
+- **Yearly rebalancing came out ahead before costs too:** on 36 months, plain, 11.4% a year against
+  11.2% monthly, so costs explain little of its edge.
+- **Fading weights changed nothing that matters:** within 0.1 points a year of the plain version at
+  every window and frequency.
+- **60/40 did well in these months.** Starting after the 2008 crash, it compounded 12.8% a year with
+  11.2% volatility (Sharpe 0.59, worst fall −14%), more growth than risk parity but less per unit of
+  risk.
+
 ## Quick start
 
 ```bash
 uv sync
 uv run python scripts/fetch_data.py   # IIMA, RBI yields and Yahoo gold -> data/
-uv run rp report basics               # topics: basics, leverage
+uv run rp report basics               # topics: basics, leverage, estimation
 uv run python scripts/build_site.py   # risk parity lab -> site/index.html
 uv run pytest
 ```

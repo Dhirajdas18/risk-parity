@@ -166,7 +166,63 @@ def report_leverage(out_dir: Path) -> dict:
     return res
 
 
+def report_estimation(out_dir: Path) -> dict:
+    """Estimation choices for risk parity, all walk-forward from Jan 2009 (so a 60-month window
+    has data): covariance from the past 12, 36 or 60 months, plain or with exponentially fading
+    weights (half-life 12 months), rebalanced every 1, 3 or 12 months, paying 0.25% per rupee
+    traded (one way). Net growth, volatility, Sharpe, worst fall, turnover and cost a year."""
+    from rp import assets
+    from rp import backtest as B
+    from rp import weights as W
+
+    t = assets.table()
+    R, cash = t[RISKY], t["cash"]
+    est = {"plain": lambda p: W.erc(cov(p)), "fading": lambda p: W.erc(W.ewma_cov(p, 12))}
+    res, grid = {}, {}
+    for win in (12, 36, 60):
+        for e, f in est.items():
+            for ev in (1, 3, 12):
+                o = B.run(R, f, win, cost=0.0025, every=ev, start="2009-01-31")
+                yrs = len(o) / 12
+                s = B.stats(o["net"], cash)
+                g = B.stats(o["gross"], cash)["cagr"]
+                grid[win, e, ev] = (s["cagr"], o["cost"].sum() / yrs)
+                res[f"  {win} months, {e}, every {ev}"] = (
+                    fmt(s) + f"; before costs {g:+.1%}; turnover {o['turnover'].sum() / yrs:.0%}"
+                    f" a year, cost {o['cost'].sum() / yrs:.2%} a year")
+    o = B.run(R, rules()["60/40"], 60, cost=0.0025, start="2009-01-31")
+    res["60/40, same months and costs"] = fmt(B.stats(o["net"], cash))
+    res["months"] = f"{len(o)}, {o.index[0]:%b %Y}-{o.index[-1]:%b %Y}"
+    c = [v[0] for v in grid.values()]
+    res["range of net growth"] = f"{min(c):.1%} to {max(c):.1%}"
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.4))
+    groups = [(w, e) for w in (12, 36, 60) for e in est]
+    x = np.arange(len(groups))
+    cl = {1: plots.SERIES[0], 3: plots.SERIES[3], 12: plots.SERIES[2]}
+    for ax, i, lab, f in ((axes[0], 0, "compounded a year after costs", lambda v: f"{v:.1%}"),
+                          (axes[1], 1, "trading cost a year", lambda v: f"{v:.2%}")):
+        for j, ev in enumerate((1, 3, 12)):
+            y = [grid[w, e, ev][i] for w, e in groups]
+            ax.scatter(x + (j - 1) * 0.18, y, s=46, color=cl[ev], zorder=3,
+                       label={1: "monthly", 3: "quarterly", 12: "yearly"}[ev])
+        ax.set_xticks(x, [f"{w} months\n{e}" for w, e in groups], fontsize=8.5)
+        ax.yaxis.set_major_formatter(lambda v, _, f=f: f(v))
+        ax.set_title(lab, fontsize=10.5, loc="left")
+    axes[0].set_yticks([0.10, 0.105, 0.11, 0.115, 0.12])
+    axes[1].set_yticks([0, 0.0005, 0.001, 0.0015, 0.002, 0.0025])
+    axes[0].legend(frameon=False, fontsize=8.5, title="rebalanced", title_fontsize=8.5,
+                   loc="lower right")
+    fig.suptitle("How risk parity was estimated barely mattered: 10.8% to 11.5% a year after "
+                 "costs, 2009-2025", x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout()
+    plots.save(fig, out_dir, "estimation")
+    plt.close(fig)
+    return res
+
+
 REPORTS: dict[str, Callable[[Path], dict]] = {
     "basics": report_basics,
     "leverage": report_leverage,
+    "estimation": report_estimation,
 }

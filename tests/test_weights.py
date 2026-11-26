@@ -28,3 +28,12 @@ def test_min_variance_and_max_sharpe_on_simple_cases():
     assert np.allclose(W.min_variance(S), [0.2, 0.8], atol=1e-6)
     w = W.max_sharpe(S, np.array([0.04, 0.01]))  # unconstrained answer ∝ S^-1 mu = [1, 1]
     assert np.allclose(w, [0.5, 0.5], atol=0.02)
+
+
+def test_ewma_cov_long_half_life_is_sample_cov():
+    rng = np.random.default_rng(1)
+    p = rng.normal(size=(40, 3))
+    assert np.allclose(W.ewma_cov(p, 1e9), np.cov(p, rowvar=False))
+    q = p.copy()
+    q[:20] *= 10  # old months noisy: a short half-life should mostly ignore them
+    assert W.ewma_cov(q, 2)[0, 0] < np.cov(q, rowvar=False)[0, 0] / 5
