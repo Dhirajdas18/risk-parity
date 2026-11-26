@@ -18,7 +18,7 @@ share of risk and growth against 60/40 and equal weight, computed month by month
 - [x] Leverage: unlevered risk parity, borrowing at Indian rates, and a volatility target
 - [x] Estimation window, EWMA and rebalancing frequency, after costs, out of sample
 - [x] Crises: 2008, the 2013 taper, 2020 and 2022
-- [ ] Risk parity against minimum variance and maximum Sharpe, out of sample
+- [x] Risk parity against minimum variance and maximum Sharpe, out of sample
 - [ ] Which assets: a short gilt, and how much gold's measurement matters
 - [ ] Verdict: a portfolio-construction rule for the reference model beyond stocks
 
@@ -137,12 +137,40 @@ its weight times its return, summed over the window's months.
 - **Levered at cash + 3%, risk parity lost 6.9% to 7.2% in each window after 2008:** more than
   60/40 in 2013 and 2022, about half of 60/40's loss in 2020.
 
+### 5. Out of sample, risk parity beat minimum variance and maximum Sharpe on risk-adjusted return
+
+<a href="docs/img/optimisers.png"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/img/optimisers.png"><img src="docs/img/optimisers.gif" alt="Walk-forward growth of risk parity, minimum variance, maximum Sharpe and 60/40 from 2009, and maximum Sharpe's monthly weights" width="720"></picture></a>
+
+Minimum variance picks the long-only weights with the lowest forecast volatility; maximum Sharpe
+picks the weights with the highest forecast return per unit of volatility, using each asset's past
+average return above past average cash. Risk parity uses no return forecast at all. All are
+walk-forward from January 2009 (204 months), rebalanced monthly, paying 0.25% per rupee traded.
+
+| 36-month window | Compounded a year | Volatility | Sharpe | Worst fall | Turnover a year |
+|---|---|---|---|---|---|
+| Risk parity | 11.1% | 5.8% | **0.79** | −4% | 18% |
+| Minimum variance | 9.0% | 5.2% | 0.51 | −5% | 20% |
+| Maximum Sharpe | 9.7% | 11.0% | 0.34 | −22% | 110% |
+| 60/40 | 12.8% | 11.2% | 0.59 | −14% | 11% |
+
+- **With a 60-month window the order held.** Risk parity's Sharpe ratio was 0.78, against 0.52 for
+  minimum variance and 0.50 for maximum Sharpe. One standard error of a Sharpe ratio over 17 years
+  is about 0.24, so risk parity's lead was about 1 to 2 standard errors.
+- **Maximum Sharpe chased past winners.** Its weights swung by about 30 points (standard deviation)
+  and it traded 110% of the portfolio a year. In 36 of the 204 months it put over 90% in one asset:
+  gold through 2012 to 2014, stocks through 2014 to 2016.
+- **Minimum variance hid in the gilt.** It held 77% in the 10-year gilt on average and had the lowest
+  volatility, 5.2%, but compounded 2.1 points a year less than risk parity.
+- **Hindsight shows what a perfect forecast was worth.** Maximum-Sharpe weights chosen from the whole
+  2004-2025 sample (27% stocks, 33% gilt, 40% gold), which no one could have known in 2009, gave a
+  Sharpe ratio of 0.82 from 2009, close to risk parity's 0.79 without any return forecast.
+
 ## Quick start
 
 ```bash
 uv sync
 uv run python scripts/fetch_data.py   # IIMA, RBI yields and Yahoo gold -> data/
-uv run rp report basics               # topics: basics, leverage, estimation, crises
+uv run rp report basics               # topics: basics, leverage, estimation, crises, optimisers
 uv run python scripts/build_site.py   # risk parity lab -> site/index.html
 uv run pytest
 ```

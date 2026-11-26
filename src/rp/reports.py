@@ -285,9 +285,76 @@ def report_crises(out_dir: Path) -> dict:
     return res
 
 
+def report_optimisers(out_dir: Path) -> dict:
+    """Risk parity against minimum variance and maximum Sharpe (long-only, fully invested), all
+    walk-forward from Jan 2009 with 36- and 60-month windows, monthly, 0.25% per rupee traded.
+    Maximum Sharpe uses past average returns above past average cash. Also the maximum-Sharpe
+    weights chosen with hindsight from the whole 2004-2025 sample, held from 2009."""
+    from rp import assets
+    from rp import backtest as B
+    from rp import weights as W
+
+    t = assets.table()
+    Rc, cash = t[RISKY + ["cash"]], t["cash"]
+
+    def c3(p):
+        return cov(p[:, :3])
+
+    opt = {"risk parity (ERC)": lambda p: W.erc(c3(p)),
+           "minimum variance": lambda p: W.min_variance(c3(p)),
+           "maximum Sharpe": lambda p: W.max_sharpe(c3(p), p[:, :3].mean(0) - p[:, 3].mean()),
+           "60/40": lambda p: np.array([0.6, 0.4, 0])}
+    res, runs = {}, {}
+    for win in (36, 60):
+        for k, f in opt.items():
+            o = B.run(Rc, lambda p, f=f: np.r_[f(p), 0], win, cost=0.0025, start="2009-01-31")
+            runs[win, k] = o
+            yrs = len(o) / 12
+            res[f"  {win} months, {k}"] = (
+                fmt(B.stats(o["net"], cash)) + f"; turnover {o['turnover'].sum() / yrs:.0%} a year"
+                + "; weights average (sd) " + ", ".join(
+                    f"{NAMES[c]} {o[c].mean():.0%} ({o[c].std():.0%})" for c in RISKY))
+    X = Rc.to_numpy()
+    wh = W.max_sharpe(cov(X[:, :3]), X[:, :3].mean(0) - X[:, 3].mean())
+    o = B.run(Rc, lambda p: np.r_[wh, 0], 36, cost=0.0025, start="2009-01-31")
+    res["hindsight maximum Sharpe (not available in real time)"] = (
+        ", ".join(f"{NAMES[c]} {v:.0%}" for c, v in zip(RISKY, wh, strict=True)) + "; "
+        + fmt(B.stats(o["net"], cash)))
+    yrs = len(o) / 12
+    res["one standard error of a Sharpe ratio over these months"] = f"{1 / np.sqrt(yrs):.2f}"
+    res["months"] = f"{len(o)}, {o.index[0]:%b %Y}-{o.index[-1]:%b %Y}"
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), gridspec_kw={"width_ratios": [1.2, 1]})
+    ax = axes[0]
+    cl = {"risk parity (ERC)": plots.SERIES[0], "minimum variance": plots.SERIES[2],
+          "maximum Sharpe": plots.SERIES[1], "60/40": plots.TEXT}
+    for k in opt:
+        w = (1 + runs[36, k]["net"]).cumprod()
+        ax.plot(w.index, w, color=cl[k], lw=1.8 if "ERC" in k else 1.3, label=k)
+    ax.yaxis.set_major_formatter(lambda v, _: f"₹{v:g}")
+    ax.set_ylabel("₹1 from 2009, after 0.25% costs")
+    ax.legend(frameon=False, fontsize=8.5, loc="upper left")
+    ax.set_title("Walk-forward, 36-month window", fontsize=10.5, loc="left")
+    ax = axes[1]
+    ms = runs[36, "maximum Sharpe"]
+    ax.stackplot(ms.index, *[ms[c] * 100 for c in RISKY], colors=[COL[c] for c in RISKY],
+                 labels=[NAMES[c] for c in RISKY], edgecolor=plots.SURFACE, linewidth=0.3)
+    ax.set_ylim(0, 100)
+    ax.set_ylabel("weight, %")
+    ax.legend(frameon=False, fontsize=8.5, ncols=3, loc="lower left", bbox_to_anchor=(0, 1.0))
+    ax.set_title("Maximum Sharpe's weights, month by month", fontsize=10.5, loc="left", pad=22)
+    fig.suptitle("Out of sample, risk parity beat minimum variance and maximum Sharpe on risk-"
+                 "adjusted return", x=0.01, ha="left", fontweight="bold")
+    fig.tight_layout()
+    plots.save(fig, out_dir, "optimisers")
+    plt.close(fig)
+    return res
+
+
 REPORTS: dict[str, Callable[[Path], dict]] = {
     "basics": report_basics,
     "leverage": report_leverage,
     "estimation": report_estimation,
     "crises": report_crises,
+    "optimisers": report_optimisers,
 }
